@@ -1,8 +1,8 @@
 #!/bin/bash
-# statusline-dots — 이미지 스타일 3행 statusline
-#  1행: 모델 (컨텍스트 크기) | 🤌 컨텍스트% | ⚡ 세션/폴더 (브랜치*) | ◑ output style
+# statusline-dots — 3행 도트 스타일 statusline
+#  1행: 모델 (컨텍스트 크기) | 🧠 effort | 📂 폴더 (브랜치*) | ◑ output style | ⚡ 세션명
 #  2행: current 5시간 한도 바·%·리셋  |  weekly 주간 한도 바·%·리셋
-#  3행: context 컨텍스트 창 도트 바
+#  3행: context 컨텍스트 창 도트 바·%
 
 input=$(cat)
 
@@ -27,6 +27,7 @@ fh_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
 sd_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty' | cut -d. -f1)
 sd_reset=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
 effort=$(echo "$input" | jq -r '.effort.level // empty')
+session_name=$(echo "$input" | jq -r '.session_name // empty')
 
 # 컨텍스트 크기 라벨
 if [ "$ctx_size" -ge 1000000 ] 2>/dev/null; then ctx_label="1M context"; else ctx_label="$((ctx_size/1000))k context"; fi
@@ -79,16 +80,6 @@ fmt_reset() {  # $1=epoch $2=short|long → "↻5:00pm (in 3h59m)"
 # ── 1행: 모델 | 컨텍스트% | 폴더(브랜치) | 스타일 ─────
 line1=""
 line1+=$(printf '%b%s (%s)%b' "$BLUE" "$model" "$ctx_label" "$RESET")
-line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
-line1+=$(printf '📚 %b%s%%%b' "$(pct_color "$ctx_pct")" "$ctx_pct" "$RESET")
-line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
-if [ -n "$branch" ]; then
-    line1+=$(printf '⚡ %b%s%b (%b%s%b%b)' "$GREEN" "$dir" "$RESET" "$GREEN" "$branch" "$RESET" "$dirty")
-else
-    line1+=$(printf '⚡ %b%s%b' "$GREEN" "$dir" "$RESET")
-fi
-line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
-line1+=$(printf '◑ %b%s%b' "$TEXT" "$style" "$RESET")
 if [ -n "$effort" ]; then
     case "$effort" in
         max|xhigh) e_color=$RED ;;
@@ -97,6 +88,19 @@ if [ -n "$effort" ]; then
     esac
     line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
     line1+=$(printf '🧠 %b%s%b' "$e_color" "$effort" "$RESET")
+fi
+line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
+if [ -n "$branch" ]; then
+    line1+=$(printf '📂 %b%s%b (%b%s%b%b)' "$GREEN" "$dir" "$RESET" "$GREEN" "$branch" "$RESET" "$dirty")
+else
+    line1+=$(printf '📂 %b%s%b' "$GREEN" "$dir" "$RESET")
+fi
+line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
+line1+=$(printf '◑ %b%s%b' "$TEXT" "$style" "$RESET")
+if [ -n "$session_name" ]; then
+    [ "${#session_name}" -gt 24 ] && session_name="${session_name:0:23}…"
+    line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
+    line1+=$(printf '⚡ %b%s%b' "$TEXT" "$session_name" "$RESET")
 fi
 echo -e "$line1"
 
