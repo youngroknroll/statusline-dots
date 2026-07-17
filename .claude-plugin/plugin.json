@@ -1,0 +1,8 @@
+{
+  "name": "statusline-dots",
+  "description": "3-line dots statusline (model/context/rate-limits) + custom subagent panel rows with progress bars",
+  "version": "1.0.0",
+  "author": {
+    "name": "Yeongrok Song"
+  }
+}

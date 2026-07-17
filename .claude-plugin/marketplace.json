@@ -1,0 +1,14 @@
+{
+  "name": "statusline-dots",
+  "description": "3-line dots statusline and custom subagent panel rows for Claude Code",
+  "owner": {
+    "name": "Yeongrok Song"
+  },
+  "plugins": [
+    {
+      "name": "statusline-dots",
+      "source": "./",
+      "description": "3-line dots statusline + custom subagent panel rows with progress bars"
+    }
+  ]
+}
