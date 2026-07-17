@@ -3,7 +3,7 @@
 Claude Code용 3행 도트 스타일 statusline + 서브에이전트 패널 커스텀 행 플러그인.
 
 ```
-Fable 5 (1M context) | 📚 47% | ⚡ my-project (main*) | ◑ default | 🧠 high
+Fable 5 (1M context) | 🧠 high | 📂 my-project (main*) | ◑ default | ⚡ 4097f271
 current ▓▓▓▓▓░░░░░ 53% ↻8:41am (in 3h27m) | weekly ▓▓▓░░░░░░░ 30% ↻jul 19, 7:14am (in 1d2h)
 context ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 14%
 ```
@@ -13,14 +13,17 @@ context ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░
 ```
 ● backend → 마이그레이션 검토 중 · ▓▓▓░░ 2/3 · 45.2k (22%)
 ✓ panel-live → 마무리 중 · ▓▓▓▓▓ 4/4 · 37.1k (18%)
+⏸ reviewer → idle — 오케스트레이터 검증 대기 · 12.0k (6%)
 ```
 
 ## 표시 항목
 
-- **1행**: 모델명(컨텍스트 크기) · 📚 컨텍스트 사용률 · ⚡ 폴더명(git 브랜치, dirty `*`) · ◑ output style · 🧠 effort 레벨
+- **1행**: 모델명(컨텍스트 크기) · 🧠 effort 레벨 · 📂 폴더명(git 브랜치, dirty `*`) · ◑ output style · ⚡ 세션 ID 앞 8자리
 - **2행**: 5시간 사용 한도(`current`)와 주간 한도(`weekly`) — 사용률 바 + 리셋 시각/카운트다운
-- **3행**: 컨텍스트 창 사용량 바
-- 색상: 사용률 50%↑ 노랑, 80%↑ 빨강 / effort는 high=노랑, xhigh·max=빨강
+- **3행**: 컨텍스트 창 사용량 바 + %
+- 색상: 사용률 50%↑ 노랑, 80%↑ 빨강 / effort는 high=노랑, xhigh·max=빨강, 그 외 초록
+- effort·세션 ID 등 데이터가 없는 세그먼트는 자동으로 숨겨짐
+- 서브에이전트 상태 아이콘: ● 실행 중 / ✓ 완료 / ✗ 실패 / ⏸ idle(워커 자기선언)
 
 ## 요구사항
 
