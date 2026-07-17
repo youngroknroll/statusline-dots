@@ -47,7 +47,7 @@ jq -r '
   fi
 
   # 진척률: progress file must be fresher than this task's start
-  progress=""; step=""
+  progress=""; step=""; idle_msg=""
   safe_name="${slug//[^a-zA-Z0-9._-]/_}"
   pfile="$PROGRESS_DIR/$safe_name"
   if [ -f "$pfile" ]; then
@@ -55,7 +55,9 @@ jq -r '
     if [ "$mtime" -ge "$start_epoch" ]; then
       line=""
       IFS= read -r line < "$pfile" || true
-      if [[ "$line" =~ ^([0-9]+)/([0-9]+)[[:space:]]*(.*)$ ]]; then
+      if [[ "$line" =~ ^idle[[:space:]]*(.*)$ ]]; then
+        idle_msg="${BASH_REMATCH[1]:-대기 중}"
+      elif [[ "$line" =~ ^([0-9]+)/([0-9]+)[[:space:]]*(.*)$ ]]; then
         n="${BASH_REMATCH[1]}"; m="${BASH_REMATCH[2]}"; step="${BASH_REMATCH[3]}"
         if [ "$m" -gt 0 ]; then
           filled=$(( n * 5 / m ))
@@ -74,7 +76,9 @@ jq -r '
   # 작업설명: live step from the progress file wins over the spawn label
   desc="$label"
   [ -n "$step" ] && desc="$step"
+  [ -n "$idle_msg" ] && desc="$idle_msg"
   [ "${#desc}" -gt 40 ] && desc="${desc:0:39}…"
+  [ -n "$idle_msg" ] && desc="${YELLOW}idle${RESET} — ${desc}"
 
   # 토큰: 45.2k, plus context % when the window size is known
   if [ "$tokens" -ge 1000 ]; then
@@ -87,12 +91,16 @@ jq -r '
     tok="${tok} (${pct}%)"
   fi
 
-  case "$status" in
-    done|completed|success) icon="${GREEN}✓${RESET}" ;;
-    failed|error)           icon="${RED}✗${RESET}" ;;
-    blocked|waiting)        icon="${YELLOW}⏸${RESET}" ;;
-    *)                      icon="${CYAN}●${RESET}" ;;
-  esac
+  if [ -n "$idle_msg" ]; then
+    icon="${YELLOW}⏸${RESET}"
+  else
+    case "$status" in
+      done|completed|success) icon="${GREEN}✓${RESET}" ;;
+      failed|error)           icon="${RED}✗${RESET}" ;;
+      blocked|waiting)        icon="${YELLOW}⏸${RESET}" ;;
+      *)                      icon="${CYAN}●${RESET}" ;;
+    esac
+  fi
 
   content="${icon} ${BOLD}${display_name}${RESET} → ${desc}"
   [ -n "$progress" ] && content="${content} · ${progress}"

@@ -56,6 +56,10 @@ Claude Code 안에서:
 
   [진행 보고] 작업 시작 시 전체 단계 수 M을 정하고, 단계가 바뀔 때마다 실행:
   mkdir -p /tmp/claude-progress && printf '%s' 'N/M 현재 단계 설명' > /tmp/claude-progress/<슬러그>
+
+  작업을 마치고 후속 지시·검증을 기다릴 때는:
+  printf '%s' 'idle 사유' > /tmp/claude-progress/<슬러그>
+  → 패널에 "⏸ 슬러그 → idle — 사유"로 표시됨 (사유 생략 시 "대기 중")
 ```
 
 ## 제거
