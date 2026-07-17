@@ -1,6 +1,6 @@
 #!/bin/bash
 # statusline-dots — 3행 도트 스타일 statusline
-#  1행: 모델 (컨텍스트 크기) | 🧠 effort | 📂 폴더 (브랜치*) | ◑ output style | ⚡ 세션명
+#  1행: 모델 (컨텍스트 크기) | 🧠 effort | 📂 폴더 (브랜치*) | ◑ output style | ⚡ 세션 ID
 #  2행: current 5시간 한도 바·%·리셋  |  weekly 주간 한도 바·%·리셋
 #  3행: context 컨텍스트 창 도트 바·%
 
@@ -27,7 +27,7 @@ fh_reset=$(echo "$input" | jq -r '.rate_limits.five_hour.resets_at // empty')
 sd_pct=$(echo "$input" | jq -r '.rate_limits.seven_day.used_percentage // empty' | cut -d. -f1)
 sd_reset=$(echo "$input" | jq -r '.rate_limits.seven_day.resets_at // empty')
 effort=$(echo "$input" | jq -r '.effort.level // empty')
-session_name=$(echo "$input" | jq -r '.session_name // empty')
+session_id=$(echo "$input" | jq -r '.session_id // empty')
 
 # 컨텍스트 크기 라벨
 if [ "$ctx_size" -ge 1000000 ] 2>/dev/null; then ctx_label="1M context"; else ctx_label="$((ctx_size/1000))k context"; fi
@@ -97,10 +97,9 @@ else
 fi
 line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
 line1+=$(printf '◑ %b%s%b' "$TEXT" "$style" "$RESET")
-if [ -n "$session_name" ]; then
-    [ "${#session_name}" -gt 24 ] && session_name="${session_name:0:23}…"
+if [ -n "$session_id" ]; then
     line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
-    line1+=$(printf '⚡ %b%s%b' "$TEXT" "$session_name" "$RESET")
+    line1+=$(printf '⚡ %b%s%b' "$TEXT" "${session_id:0:8}" "$RESET")
 fi
 echo -e "$line1"
 
