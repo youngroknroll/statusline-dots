@@ -18,6 +18,8 @@ RESET="\033[0m"
 
 # ── 필드 추출 ─────────────────────────────────────────
 model=$(echo "$input" | jq -r '.model.display_name // "?"')
+# display_name이 "(1M context)" 등 컨텍스트 라벨을 이미 포함하면 제거(아래서 다시 붙임)
+model=$(echo "$model" | sed -E 's/ *\([0-9]+[kM]? context\)$//')
 ctx_size=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
 ctx_pct=$(echo "$input" | jq -r '.context_window.used_percentage // 0' | cut -d. -f1)
 style=$(echo "$input" | jq -r '.output_style.name // "default"')
