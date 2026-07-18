@@ -1,41 +1,61 @@
 #!/bin/bash
-# subagentStatusLine renderer: <이름> → <작업설명> · <진척률> · <토큰>
-# stdin:  {"columns": N, "tasks": [{id, name, label, description, status,
-#          startTime, tokenCount, contextWindowSize, ...}]}
+# subagentStatusLine renderer: <이름> → <작업설명> · <토큰>
+# stdin:  {"session_id", "transcript_path", "columns": N,
+#          "tasks": [{id, label, description, status, tokenCount,
+#          contextWindowSize, ...}]}
 # stdout: one JSON line per task: {"id": "...", "content": "..."}
 #
-# 진척률 convention: workers write "N/M current step" (single line) to
-# /tmp/claude-progress/<agent-name>. The file only counts if its mtime is newer
-# than the task's startTime, so leftovers from earlier runs are ignored.
-# (Moved out of ~/.claude/progress on 2026-07-18: writes into ~/.claude are
-# classified as sensitive-file edits and trigger a permission prompt per
-# worker; /tmp is prompt-free and reboot-clearing is fine for ephemeral
-# progress. The mtime staleness check already guards stale leftovers.)
+# 이름(agentType)은 stdin에 없다. task id로 meta.json을 조회해 얻는다.
 set -uo pipefail
-
-PROGRESS_DIR="/tmp/claude-progress"
 
 ESC=$'\033'
 BOLD="${ESC}[1m"; DIM="${ESC}[2m"; RESET="${ESC}[0m"
 CYAN="${ESC}[36m"; GREEN="${ESC}[32m"; YELLOW="${ESC}[33m"; RED="${ESC}[31m"
+BLUE="${ESC}[34m"; MAGENTA="${ESC}[35m"
 
-jq -r '
+# 이름별 안정적 색상: agentType 문자합을 팔레트에 매핑 (RED는 실패 아이콘용이라 제외)
+NAME_PALETTE=("$CYAN" "$GREEN" "$YELLOW" "$BLUE" "$MAGENTA")
+name_color() {
+  local s="$1" sum=0 i c
+  for ((i = 0; i < ${#s}; i++)); do
+    printf -v c '%d' "'${s:i:1}" 2>/dev/null || c=0
+    sum=$((sum + c))
+  done
+  printf '%s' "${NAME_PALETTE[$((sum % ${#NAME_PALETTE[@]}))]}"
+}
+
+# 전체 입력을 먼저 읽어 top-level 컨텍스트(메타 조회 경로)를 확보한다.
+# Claude Code는 subagentStatusLine stdin에 에이전트 이름을 넣어주지 않는다.
+# 실제 이름(agentType)은 <session>/subagents/agent-<task id>.meta.json 에만 있다.
+input=$(cat)
+transcript_path=$(printf '%s' "$input" | jq -r '.transcript_path // empty')
+session_id=$(printf '%s' "$input" | jq -r '.session_id // empty')
+meta_dir=""
+if [ -n "$transcript_path" ] && [ -n "$session_id" ]; then
+  meta_dir="$(dirname "$transcript_path")/$session_id/subagents"
+fi
+
+printf '%s' "$input" | jq -r '
   .tasks[]? |
   [ .id,
     (.name // ""),
     ((.label // .description // "") | gsub("[\\t\\n\\r]"; " ")),
     (.status // ""),
     ((.tokenCount // 0) | floor),
-    ((.contextWindowSize // 0) | floor),
-    ((.startTime // "") | tostring |
-      if test("^[0-9]+$") then (tonumber / 1000 | floor)
-      else (sub("\\.[0-9]+"; "") | (fromdateiso8601? // 0)) end)
+    ((.contextWindowSize // 0) | floor)
   ] | map(tostring) | join("")
-' | while IFS=$'\x1f' read -r id name label status tokens ctx start_epoch; do
+' | while IFS=$'\x1f' read -r id name label status tokens ctx; do
   [ -n "$id" ] || continue
 
-  # 슬러그: name 필드가 있으면 그것, 없으면 label의 "슬러그: 설명" 규약에서 추출
-  slug="$name"
+  # 실제 에이전트 이름: task id → agent-<id>.meta.json 의 agentType
+  agent_type=""
+  if [ -n "$meta_dir" ] && [ -f "$meta_dir/agent-$id.meta.json" ]; then
+    agent_type=$(jq -r '.agentType // empty' "$meta_dir/agent-$id.meta.json" 2>/dev/null)
+  fi
+
+  # 슬러그: agentType > name 필드 > label의 "슬러그: 설명" 규약
+  slug="$agent_type"
+  [ -z "$slug" ] && slug="$name"
   if [ -z "$slug" ] && [[ "$label" == *:* ]]; then
     slug="${label%%:*}"
   fi
@@ -46,41 +66,11 @@ jq -r '
     display_name="agent"
   fi
 
-  # 진척률: progress file must be fresher than this task's start
-  progress=""; step=""; idle_msg=""
-  safe_name="${slug//[^a-zA-Z0-9._-]/_}"
-  pfile="$PROGRESS_DIR/$safe_name"
-  if [ -f "$pfile" ]; then
-    mtime=$(stat -f %m "$pfile" 2>/dev/null || stat -c %Y "$pfile" 2>/dev/null || echo 0)
-    if [ "$mtime" -ge "$start_epoch" ]; then
-      line=""
-      IFS= read -r line < "$pfile" || true
-      if [[ "$line" =~ ^idle[[:space:]]*(.*)$ ]]; then
-        idle_msg="${BASH_REMATCH[1]:-대기 중}"
-      elif [[ "$line" =~ ^([0-9]+)/([0-9]+)[[:space:]]*(.*)$ ]]; then
-        n="${BASH_REMATCH[1]}"; m="${BASH_REMATCH[2]}"; step="${BASH_REMATCH[3]}"
-        if [ "$m" -gt 0 ]; then
-          filled=$(( n * 5 / m ))
-          [ "$n" -gt 0 ] && [ "$filled" -eq 0 ] && filled=1
-          [ "$filled" -gt 5 ] && filled=5
-          bar=""
-          for ((i = 0; i < 5; i++)); do
-            if [ "$i" -lt "$filled" ]; then bar+="▓"; else bar+="░"; fi
-          done
-          progress="${GREEN}${bar}${RESET} ${n}/${m}"
-        fi
-      fi
-    fi
-  fi
-
-  # 작업설명: live step from the progress file wins over the spawn label
+  # 작업설명 (40자 초과 시 말줄임)
   desc="$label"
-  [ -n "$step" ] && desc="$step"
-  [ -n "$idle_msg" ] && desc="$idle_msg"
   [ "${#desc}" -gt 40 ] && desc="${desc:0:39}…"
-  [ -n "$idle_msg" ] && desc="${YELLOW}idle${RESET} — ${desc}"
 
-  # 토큰: 45.2k, plus context % when the window size is known
+  # 토큰: 45.2k, 컨텍스트 창 크기를 알면 사용률 %도 부기
   if [ "$tokens" -ge 1000 ]; then
     tok=$(awk -v t="$tokens" 'BEGIN { printf "%.1fk", t / 1000 }')
   else
@@ -91,20 +81,15 @@ jq -r '
     tok="${tok} (${pct}%)"
   fi
 
-  if [ -n "$idle_msg" ]; then
-    icon="${YELLOW}⏸${RESET}"
-  else
-    case "$status" in
-      done|completed|success) icon="${GREEN}✓${RESET}" ;;
-      failed|error)           icon="${RED}✗${RESET}" ;;
-      blocked|waiting)        icon="${YELLOW}⏸${RESET}" ;;
-      *)                      icon="${CYAN}●${RESET}" ;;
-    esac
-  fi
+  case "$status" in
+    done|completed|success) icon="${GREEN}✓${RESET}" ;;
+    failed|error)           icon="${RED}✗${RESET}" ;;
+    blocked|waiting)        icon="${YELLOW}⏸${RESET}" ;;
+    *)                      icon="${CYAN}●${RESET}" ;;
+  esac
 
-  content="${icon} ${BOLD}${display_name}${RESET} → ${desc}"
-  [ -n "$progress" ] && content="${content} · ${progress}"
-  content="${content} · ${DIM}${tok}${RESET}"
+  nc=$(name_color "$display_name")
+  content="${icon} ${nc}${BOLD}${display_name}${RESET} → ${desc} · ${DIM}${tok}${RESET}"
 
   jq -cn --arg id "$id" --arg content "$content" '{id: $id, content: $content}'
 done
