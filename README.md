@@ -40,7 +40,8 @@ context ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░
 | Debian·Ubuntu | `sudo apt install jq` | |
 | Fedora·RHEL | `sudo dnf install jq` | |
 | Arch | `sudo pacman -S jq` | |
-| Windows | `winget install jqlang.jq` (또는 `scoop install jq`, `choco install jq`) | **Git Bash 필수** — 아래 참고 |
+
+**Windows는 지원하지 않습니다.** 검증된 적이 없어 지원 대상에서 제외합니다.
 
 그 외 의존성은 `date`, `awk`, `sed`, `tr`, `cut`, `git`, `dirname`뿐이며 모두 표준 도구입니다. `date`는 BSD(macOS)와 GNU(Linux) 양쪽 옵션을 자동으로 시도합니다.
 
@@ -59,47 +60,7 @@ Claude Code 안에서:
 /statusline-dots:install
 ```
 
-설치 절차는 macOS·Linux·Windows가 동일합니다. 아래는 환경별로 추가로 알아둘 점입니다.
-
-### Linux
-
-별도 조치 없이 동작합니다. `jq`만 설치돼 있으면 됩니다.
-
-### Windows
-
-Claude Code는 statusline 커맨드를 **Git Bash가 설치돼 있으면 Git Bash로, 없으면 PowerShell로** 실행합니다. 이 플러그인은 bash 스크립트이므로 [Git for Windows](https://gitforwindows.org/) 설치가 필수입니다. 없으면 PowerShell이 스크립트를 해석하지 못해 statusline이 표시되지 않습니다.
-
-- `~`는 `%USERPROFILE%`로 확장되므로 `~/.claude/statusline-dots.sh` 경로가 그대로 동작합니다.
-- `~/.claude/settings.json`을 직접 편집한다면 경로에 **슬래시(`/`)만** 쓰세요. Git Bash가 백슬래시를 이스케이프 문자로 처리해 경로가 조용히 깨지고, 오류 메시지도 뜨지 않습니다.
-- `jq`가 Git Bash의 `PATH`에 있어야 합니다. Git Bash에서 `which jq`로 확인하세요.
-
-#### 서브에이전트 패널만 안 뜨는 경우 (미검증)
-
-메인 statusline은 나오는데 서브에이전트 패널만 표시되지 않는다면, 이 플러그인의 `settings.json`이 쓰는 `${CLAUDE_PLUGIN_ROOT}` 변수가 Windows에서 백슬래시 경로로 치환되는 것이 원인일 수 있습니다. **이 변수의 Windows 치환 형식은 Claude Code 공식 문서에 명시돼 있지 않아 추정이며, 확인되지 않았습니다.**
-
-해당된다면 메인 statusline과 같은 방식으로 우회할 수 있습니다. Git Bash에서:
-
-```bash
-# 설치된 캐시본을 우선 찾고, 없으면 마켓플레이스 체크아웃에서 찾습니다
-src=$(find ~/.claude/plugins/cache -name subagent-statusline.sh -path '*statusline-dots*' 2>/dev/null | head -1)
-[ -z "$src" ] && src=$(find ~/.claude/plugins -name subagent-statusline.sh -path '*statusline-dots*' 2>/dev/null | head -1)
-cp "$src" ~/.claude/subagent-statusline.sh && chmod +x ~/.claude/subagent-statusline.sh
-```
-
-그리고 `~/.claude/settings.json`에 다음을 병합하세요. 플러그인 경로 대신 복사본을 직접 가리키므로 변수 치환을 거치지 않습니다.
-
-```json
-{
-  "subagentStatusLine": {
-    "type": "command",
-    "command": "~/.claude/subagent-statusline.sh"
-  }
-}
-```
-
-이 방식은 플러그인을 업데이트해도 복사본이 갱신되지 않으므로, 업데이트 후에는 위 `cp`를 다시 실행해야 합니다.
-
-> Windows 동작은 Claude Code 공식 문서를 근거로 작성했으며, 실제 Windows 환경에서 검증되지 않았습니다. 문제를 겪으시거나 위 우회가 효과가 있었다면 이슈로 알려주세요.
+설치 절차는 macOS와 Linux가 동일합니다. Linux는 별도 조치 없이 동작하며 `jq`만 설치돼 있으면 됩니다.
 
 ## 제거
 
