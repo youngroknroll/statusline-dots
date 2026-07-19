@@ -32,8 +32,17 @@ context ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░
 
 ## 요구사항
 
-- `bash`, `jq` (macOS: `brew install jq`, Debian/Ubuntu: `sudo apt install jq`)
-- macOS/Linux 지원
+`bash`와 `jq`가 필요합니다.
+
+| 환경 | jq 설치 | 비고 |
+|---|---|---|
+| macOS | `brew install jq` | |
+| Debian·Ubuntu | `sudo apt install jq` | |
+| Fedora·RHEL | `sudo dnf install jq` | |
+| Arch | `sudo pacman -S jq` | |
+| Windows | `winget install jqlang.jq` (또는 `scoop install jq`, `choco install jq`) | **Git Bash 필수** — 아래 참고 |
+
+그 외 의존성은 `date`, `awk`, `sed`, `tr`, `cut`, `git`, `dirname`뿐이며 모두 표준 도구입니다. `date`는 BSD(macOS)와 GNU(Linux) 양쪽 옵션을 자동으로 시도합니다.
 
 ## 설치
 
@@ -49,6 +58,22 @@ Claude Code 안에서:
 ```
 /statusline-dots:install
 ```
+
+설치 절차는 macOS·Linux·Windows가 동일합니다. 아래는 환경별로 추가로 알아둘 점입니다.
+
+### Linux
+
+별도 조치 없이 동작합니다. `jq`만 설치돼 있으면 됩니다.
+
+### Windows
+
+Claude Code는 statusline 커맨드를 **Git Bash가 설치돼 있으면 Git Bash로, 없으면 PowerShell로** 실행합니다. 이 플러그인은 bash 스크립트이므로 [Git for Windows](https://gitforwindows.org/) 설치가 필수입니다. 없으면 PowerShell이 스크립트를 해석하지 못해 statusline이 표시되지 않습니다.
+
+- `~`는 `%USERPROFILE%`로 확장되므로 `~/.claude/statusline-dots.sh` 경로가 그대로 동작합니다.
+- `~/.claude/settings.json`을 직접 편집한다면 경로에 **슬래시(`/`)만** 쓰세요. Git Bash가 백슬래시를 이스케이프 문자로 처리해 경로가 조용히 깨지고, 오류 메시지도 뜨지 않습니다.
+- `jq`가 Git Bash의 `PATH`에 있어야 합니다. Git Bash에서 `which jq`로 확인하세요.
+
+> Windows 동작은 Claude Code 공식 문서를 근거로 작성했으며, 실제 Windows 환경에서 검증되지 않았습니다. 문제를 겪으시면 이슈로 알려주세요.
 
 ## 제거
 
