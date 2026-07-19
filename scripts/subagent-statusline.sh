@@ -1,7 +1,7 @@
 #!/bin/bash
 # subagentStatusLine renderer: <이름> → <작업설명> · <토큰>
 # stdin:  {"session_id", "transcript_path", "columns": N,
-#          "tasks": [{id, label, description, status, tokenCount,
+#          "tasks": [{id, label, description, status, startTime, tokenCount,
 #          contextWindowSize, ...}]}
 # stdout: one JSON line per task: {"id": "...", "content": "..."}
 #
@@ -24,6 +24,19 @@ name_color() {
   printf '%s' "${NAME_PALETTE[$((sum % ${#NAME_PALETTE[@]}))]}"
 }
 
+# 실행시간: 45s / 2m14s / 1h03m — 자리폭을 좁게 유지하려 단위는 최대 두 개
+fmt_elapsed() {
+  local secs=$1
+  local h=$((secs / 3600)) m=$(((secs % 3600) / 60)) s=$((secs % 60))
+  if [ "$h" -gt 0 ]; then
+    printf '%dh%02dm' "$h" "$m"
+  elif [ "$m" -gt 0 ]; then
+    printf '%dm%02ds' "$m" "$s"
+  else
+    printf '%ds' "$s"
+  fi
+}
+
 # 전체 입력을 먼저 읽어 top-level 컨텍스트(메타 조회 경로)를 확보한다.
 # Claude Code는 subagentStatusLine stdin에 에이전트 이름을 넣어주지 않는다.
 # 실제 이름(agentType)은 <session>/subagents/agent-<task id>.meta.json 에만 있다.
@@ -42,9 +55,12 @@ printf '%s' "$input" | jq -r '
     ((.label // .description // "") | gsub("[\\t\\n\\r]"; " ")),
     (.status // ""),
     ((.tokenCount // 0) | floor),
-    ((.contextWindowSize // 0) | floor)
+    ((.contextWindowSize // 0) | floor),
+    ((.startTime // "") | tostring |
+      if test("^[0-9]+$") then (tonumber / 1000 | floor)
+      else (sub("\\.[0-9]+"; "") | (fromdateiso8601? // 0)) end)
   ] | map(tostring) | join("")
-' | while IFS=$'\x1f' read -r id name label status tokens ctx; do
+' | while IFS=$'\x1f' read -r id name label status tokens ctx start_epoch; do
   [ -n "$id" ] || continue
 
   # 실제 에이전트 이름: task id → agent-<id>.meta.json 의 agentType
@@ -88,8 +104,15 @@ printf '%s' "$input" | jq -r '
     *)                      icon="${CYAN}●${RESET}" ;;
   esac
 
+  # 실행시간: startTime을 못 읽었거나 시계가 어긋나면 표기를 생략한다
+  elapsed=""
+  if [ "$start_epoch" -gt 0 ] 2>/dev/null; then
+    secs=$(( $(date +%s) - start_epoch ))
+    [ "$secs" -ge 0 ] && elapsed="$(fmt_elapsed "$secs") · "
+  fi
+
   nc=$(name_color "$display_name")
-  content="${icon} ${nc}${BOLD}${display_name}${RESET} → ${desc} · ${DIM}${tok}${RESET}"
+  content="${icon} ${nc}${BOLD}${display_name}${RESET} → ${desc} · ${DIM}${elapsed}${tok}${RESET}"
 
   jq -cn --arg id "$id" --arg content "$content" '{id: $id, content: $content}'
 done

@@ -13,9 +13,9 @@ context ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░
 서브에이전트 패널:
 
 ```
-● backend-tdd-coach → API 마이그레이션 검토 중 · 45.2k (22%)
-✓ code-reviewer → 리뷰 완료 · 37.1k (18%)
-● Explore → 테스트 파일 비교 중 · 12.0k (6%)
+● backend-tdd-coach → API 마이그레이션 검토 중 · 2m14s · 45.2k (22%)
+✓ code-reviewer → 리뷰 완료 · 3m12s · 37.1k (18%)
+● Explore → 테스트 파일 비교 중 · 45s · 12.0k (6%)
 ```
 
 ## 표시 항목
@@ -27,6 +27,7 @@ context ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░
 - effort·세션 ID 등 데이터가 없는 세그먼트는 자동으로 숨겨짐
 - 서브에이전트 이름: 에이전트 타입(예: `code-reviewer`, `Explore`)을 자동 표시 — 이름별로 고정 색상 배정. Claude Code가 stdin에 이름을 주지 않으므로 task id로 세션의 `subagents/agent-<id>.meta.json`에서 `agentType`을 조회
 - 서브에이전트 작업설명·토큰 사용량(컨텍스트 창을 알면 `%`)은 Claude Code가 native로 제공 — 추가 비용 없음
+- 서브에이전트 실행시간: `45s` → `2m14s` → `1h03m` 형식. Claude Code가 주는 `startTime` 기준이며, 값이 없으면 이 구간은 생략됨
 - 서브에이전트 상태 아이콘: ● 실행 중 / ✓ 완료 / ✗ 실패 / ⏸ 대기(blocked·waiting)
 
 ## 요구사항
