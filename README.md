@@ -43,6 +43,8 @@ context ▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░
 
 **Windows는 지원하지 않습니다.** 검증된 적이 없어 지원 대상에서 제외합니다.
 
+**터미널 CLI 환경 전용입니다.** statusline은 Claude Code CLI의 터미널 UI가 그리는 것이라, VS Code·JetBrains 확장의 자체 UI에서는 표시되지 않습니다. 다만 그 IDE들의 **통합 터미널에서 `claude`를 실행하면 정상 동작합니다** — 일반 터미널과 동일한 CLI이기 때문입니다.
+
 그 외 의존성은 `date`, `awk`, `sed`, `tr`, `cut`, `git`, `dirname`뿐이며 모두 표준 도구입니다. `date`는 BSD(macOS)와 GNU(Linux) 양쪽 옵션을 자동으로 시도합니다.
 
 ## 설치
