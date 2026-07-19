@@ -73,7 +73,33 @@ Claude Code는 statusline 커맨드를 **Git Bash가 설치돼 있으면 Git Bas
 - `~/.claude/settings.json`을 직접 편집한다면 경로에 **슬래시(`/`)만** 쓰세요. Git Bash가 백슬래시를 이스케이프 문자로 처리해 경로가 조용히 깨지고, 오류 메시지도 뜨지 않습니다.
 - `jq`가 Git Bash의 `PATH`에 있어야 합니다. Git Bash에서 `which jq`로 확인하세요.
 
-> Windows 동작은 Claude Code 공식 문서를 근거로 작성했으며, 실제 Windows 환경에서 검증되지 않았습니다. 문제를 겪으시면 이슈로 알려주세요.
+#### 서브에이전트 패널만 안 뜨는 경우 (미검증)
+
+메인 statusline은 나오는데 서브에이전트 패널만 표시되지 않는다면, 이 플러그인의 `settings.json`이 쓰는 `${CLAUDE_PLUGIN_ROOT}` 변수가 Windows에서 백슬래시 경로로 치환되는 것이 원인일 수 있습니다. **이 변수의 Windows 치환 형식은 Claude Code 공식 문서에 명시돼 있지 않아 추정이며, 확인되지 않았습니다.**
+
+해당된다면 메인 statusline과 같은 방식으로 우회할 수 있습니다. Git Bash에서:
+
+```bash
+# 설치된 캐시본을 우선 찾고, 없으면 마켓플레이스 체크아웃에서 찾습니다
+src=$(find ~/.claude/plugins/cache -name subagent-statusline.sh -path '*statusline-dots*' 2>/dev/null | head -1)
+[ -z "$src" ] && src=$(find ~/.claude/plugins -name subagent-statusline.sh -path '*statusline-dots*' 2>/dev/null | head -1)
+cp "$src" ~/.claude/subagent-statusline.sh && chmod +x ~/.claude/subagent-statusline.sh
+```
+
+그리고 `~/.claude/settings.json`에 다음을 병합하세요. 플러그인 경로 대신 복사본을 직접 가리키므로 변수 치환을 거치지 않습니다.
+
+```json
+{
+  "subagentStatusLine": {
+    "type": "command",
+    "command": "~/.claude/subagent-statusline.sh"
+  }
+}
+```
+
+이 방식은 플러그인을 업데이트해도 복사본이 갱신되지 않으므로, 업데이트 후에는 위 `cp`를 다시 실행해야 합니다.
+
+> Windows 동작은 Claude Code 공식 문서를 근거로 작성했으며, 실제 Windows 환경에서 검증되지 않았습니다. 문제를 겪으시거나 위 우회가 효과가 있었다면 이슈로 알려주세요.
 
 ## 제거
 
