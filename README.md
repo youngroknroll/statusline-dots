@@ -1,5 +1,7 @@
 # statusline-dots
 
+<img width="1334" height="304" alt="image" src="https://github.com/user-attachments/assets/5399b97e-d2a6-494b-950c-a3f89329c4b6" />
+
 Claude Code용 3행 도트 스타일 statusline + 서브에이전트 패널 커스텀 행 플러그인.
 
 ```
