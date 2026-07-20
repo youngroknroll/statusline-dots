@@ -54,6 +54,7 @@ Claude Code 안에서:
 
 ```
 /plugin marketplace add youngroknroll/statusline-dots
+
 /plugin install statusline-dots@statusline-dots
 ```
 
@@ -62,8 +63,9 @@ Claude Code 안에서:
 ```
 /statusline-dots:install
 ```
+그리고 claude code 재시작 !
 
-설치 절차는 macOS와 Linux가 동일합니다. Linux는 별도 조치 없이 동작하며 `jq`만 설치돼 있으면 됩니다.
+> 설치 절차는 macOS와 Linux가 동일합니다. Linux는 별도 조치 없이 동작하며 `jq`만 설치돼 있으면 됩니다.
 
 ## 제거
 
