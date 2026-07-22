@@ -34,12 +34,41 @@ session_id=$(echo "$input" | jq -r '.session_id // empty')
 # 컨텍스트 크기 라벨
 if [ "$ctx_size" -ge 1000000 ] 2>/dev/null; then ctx_label="1M context"; else ctx_label="$((ctx_size/1000))k context"; fi
 
-# git 브랜치 (+dirty *)
+# git 브랜치 (+dirty *) / 워크트리면 본체 저장소명
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // "."')
 branch=""
+main_repo=""
 if git -C "$cwd" rev-parse --git-dir >/dev/null 2>&1; then
     branch=$(git -C "$cwd" branch --show-current 2>/dev/null)
     [ -n "$(git -C "$cwd" status --porcelain 2>/dev/null | head -1)" ] && dirty="${RED}*${RESET}" || dirty=""
+    git_dir=$(git -C "$cwd" rev-parse --absolute-git-dir 2>/dev/null)
+    common_dir=$(git -C "$cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+    if [ -n "$common_dir" ] && [ "$git_dir" != "$common_dir" ]; then
+        main_repo=$(basename "$(dirname "$common_dir")")
+    fi
+fi
+
+# 이 세션이 띄운 LISTEN 포트 — claude 조상 프로세스의 자손들만 조회
+ports=""
+claude_pid=""
+p=$PPID
+while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null; do
+    case "$(ps -o comm= -p "$p" 2>/dev/null)" in
+        *claude*) claude_pid=$p; break ;;
+    esac
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+done
+if [ -n "$claude_pid" ]; then
+    desc_pids=$(ps -ax -o pid=,ppid= | awk -v root="$claude_pid" '
+        { pid[NR]=$1; ppid[NR]=$2 }
+        END {
+            n=1; q[1]=root; seen[root]=1
+            for (i=1; i<=n; i++) for (j=1; j<=NR; j++)
+                if (ppid[j]==q[i] && !seen[pid[j]]) { seen[pid[j]]=1; q[++n]=pid[j] }
+            for (i=2; i<=n; i++) printf "%s,", q[i]
+        }' | sed 's/,$//')
+    [ -n "$desc_pids" ] && ports=$(lsof -nP -iTCP -sTCP:LISTEN -a -p "$desc_pids" 2>/dev/null \
+        | awk 'NR>1 { split($9, a, ":"); print a[length(a)] }' | sort -un | tr '\n' ' ' | sed 's/ $//')
 fi
 
 # ── 헬퍼 ──────────────────────────────────────────────
@@ -92,13 +121,20 @@ if [ -n "$effort" ]; then
     line1+=$(printf '🧠 %b%s%b' "$e_color" "$effort" "$RESET")
 fi
 line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
-if [ -n "$branch" ]; then
-    line1+=$(printf '📂 %b%s%b (%b%s%b%b)' "$GREEN" "$dir" "$RESET" "$GREEN" "$branch" "$RESET" "$dirty")
+if [ -n "$main_repo" ]; then
+    line1+=$(printf '📂 %b%s%b ⧉ %b%s%b' "$TEXT" "$main_repo" "$RESET" "$GREEN" "$dir" "$RESET")
 else
     line1+=$(printf '📂 %b%s%b' "$GREEN" "$dir" "$RESET")
 fi
+if [ -n "$branch" ]; then
+    line1+=$(printf ' (%b%s%b%b)' "$GREEN" "$branch" "$RESET" "$dirty")
+fi
 line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
 line1+=$(printf '◑ %b%s%b' "$TEXT" "$style" "$RESET")
+if [ -n "$ports" ]; then
+    line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
+    line1+=$(printf '🔌 %b%s%b' "$GREEN" "$ports" "$RESET")
+fi
 if [ -n "$session_id" ]; then
     line1+=$(printf ' %b|%b ' "$DIM" "$RESET")
     line1+=$(printf '⚡ %b%s%b' "$TEXT" "${session_id:0:8}" "$RESET")
